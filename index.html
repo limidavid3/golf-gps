@@ -146,6 +146,14 @@ textarea{width:100%;height:120px;background:#0d1f16;color:var(--ink);border:1px 
   </div>
 </div>
 
+<div class="setbar" id="pinbar">
+  <div class="t" id="pinTitle">點果嶺上的旗桿位置</div>
+  <div class="seg">
+    <button id="pinClr">清除旗位</button>
+    <button id="pinDone" class="on">完成</button>
+  </div>
+</div>
+
 <div class="setbar" id="setbar">
   <div class="t" id="setTitle">設定第 1 洞：點地圖放置</div>
   <div class="seg" id="seg">
@@ -185,7 +193,7 @@ textarea{width:100%;height:120px;background:#0d1f16;color:var(--ink);border:1px 
 <div class="sheet" id="menu"><div class="in">
   <h3>霧峰攻略測距</h3>
   <button class="btn" id="mSetup">✎ 設定本洞位置<small>點正射影像放發球台、果嶺前緣／中心／後緣</small></button>
-  <button class="btn" id="mPin">⚑ 設定今日旗位<small>開啟後點果嶺上的旗桿位置，距離改以旗桿計算</small></button>
+  <button class="btn" id="mPin">⚑ 設定／清除今日旗位<small>點果嶺上的旗桿位置，點錯可以移動或清除</small></button>
   <button class="btn" id="mLayer">🛰 切換底圖<small id="layerName">目前：國土測繪中心正射影像</small></button>
   <button class="btn" id="mToGuide">📖 切到攻略模式<small>整頁看 18 洞攻略</small></button>
   <button class="btn" id="mGuide">📝 本洞攻略<small>官方說明、建議打法、我的注意事項</small></button>
@@ -509,7 +517,7 @@ function frame(){
 }
 
 // ---- 換洞 ----
-function go(n){state.cur=((n-1+18)%18)+1;tapPt=null;framedOnHole=0;save();update();frame();if(setting)setTitle();}
+function go(n){state.cur=((n-1+18)%18)+1;tapPt=null;framedOnHole=0;save();update();frame();if(setting)setTitle();if(pinMode)pinTitle();}
 $('prev').onclick=()=>go(state.cur-1);
 $('next').onclick=()=>go(state.cur+1);
 // ◎：重新取景（朝前方＋整洞＋目前位置）；再按一次切換跟隨 GPS
@@ -532,7 +540,7 @@ map.on('click',e=>{
     if(i<3)selKey(order[i+1]);
     update();return;
   }
-  if(pinMode){state.pins[state.cur]=p;pinMode=false;save();toast('旗位已設定（今天有效）');update();return;}
+  if(pinMode){state.pins[state.cur]=p;save();pinTitle();update();return;}
   tapPt=tapPt?null:e.latlng;update();
 });
 
@@ -551,7 +559,17 @@ document.querySelectorAll('.sheet').forEach(s=>s.addEventListener('click',e=>{if
 $('btnMenu').onclick=()=>open('menu');
 $('mClose').onclick=closeAll;
 $('mSetup').onclick=startSetup;
-$('mPin').onclick=()=>{closeAll();if(!state.holes[state.cur].center){toast('本洞還沒設定果嶺');return;}pinMode=true;const c=ll(state.holes[state.cur].center);map.setView(c,20);toast('點果嶺上的旗桿位置',2500);};
+function pinTitle(){$('pinTitle').textContent=state.pins[state.cur]?'第 '+state.cur+' 洞旗位已設定・點別的地方可以移動':'第 '+state.cur+' 洞：點果嶺上的旗桿位置';}
+function startPin(){
+  closeAll();
+  if(!state.holes[state.cur].center){toast('本洞還沒設定果嶺');return;}
+  pinMode=true;tapPt=null;$('dist').style.display='none';$('pinbar').style.display='block';pinTitle();
+  const pin=ll(state.pins[state.cur]);map.setView(pin||ll(state.holes[state.cur].center),20);update();
+}
+function endPin(){pinMode=false;$('pinbar').style.display='none';$('dist').style.display='block';update();frame();}
+$('mPin').onclick=startPin;
+$('pinClr').onclick=()=>{delete state.pins[state.cur];save();pinTitle();update();toast('已清除，距離改回果嶺中心');};
+$('pinDone').onclick=()=>{endPin();if(state.pins[state.cur])toast('旗位已設定（今天有效）');};
 $('mLayer').onclick=()=>{switchLayer(state.layer==='nlsc'?'esri':'nlsc');closeAll();toast('底圖：'+layerNames[state.layer]);};
 
 function renderClubs(){
@@ -669,7 +687,7 @@ $('mImport').onclick=()=>{$('ioTitle').textContent='貼上球場資料 JSON';$('
   $('ioOk').onclick=()=>{try{const d=JSON.parse($('ioText').value);if(!d.holes)throw 0;state.holes=d.holes;if(d.bag)state.bag=d.bag;if(d.notes)state.notes=d.notes;if(d.ov)state.ov=d.ov;if(d.pt)state.pt=d.pt;save();closeAll();update();frame();toast('匯入完成');}catch(e){toast('格式不對');}};open('io');};
 
 // 長按螢幕 = 設旗位（快捷）
-map.on('contextmenu',e=>{if(setting)return;state.pins[state.cur]=[+e.latlng.lat.toFixed(7),+e.latlng.lng.toFixed(7)];save();toast('旗位已設定');update();});
+map.on('contextmenu',e=>{if(setting||pinMode)return;state.pins[state.cur]=[+e.latlng.lat.toFixed(7),+e.latlng.lng.toFixed(7)];save();update();startPin();});
 
 
 // ---- 雲端同步（GitHub Gist，私人）----
