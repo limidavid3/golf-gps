@@ -1,0 +1,10 @@
+{
+  "name": "高爾夫攻略測距",
+  "short_name": "攻略測距",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0f2a1d",
+  "theme_color": "#0f2a1d",
+  "icons": [{"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},
+            {"src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png"}]
+}
