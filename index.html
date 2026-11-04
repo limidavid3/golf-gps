@@ -111,6 +111,8 @@ textarea{width:100%;height:120px;background:#0d1f16;color:var(--ink);border:1px 
 .clubsel{appearance:none;-webkit-appearance:none;font:inherit;font-size:17px;font-weight:700;color:var(--ink);background:transparent;border:0;border-bottom:1.5px dashed var(--mute);border-radius:0;padding:0 14px 0 0;background-image:linear-gradient(45deg,transparent 50%,var(--mute) 50%),linear-gradient(135deg,var(--mute) 50%,transparent 50%);background-position:calc(100% - 7px) 55%,calc(100% - 3px) 55%;background-size:4px 4px;background-repeat:no-repeat}
 .clubsel option{color:#16241B;background:#fff}
 .reset{font:inherit;font-size:11px;letter-spacing:0;color:var(--ink);background:#ffffff1a;border:1px solid var(--line);border-radius:6px;padding:1px 8px;margin-left:4px}
+.tok{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:#0d1f16;color:var(--ink);font-size:15px;font-family:ui-monospace,monospace}
+.homesync{display:block;margin:10px 0 0 auto;background:none;border:1px solid var(--line);color:var(--mute);border-radius:20px;padding:6px 12px;font-size:13px}
 .leaflet-control-attribution{font-size:9px!important;background:#0006!important;color:#ccc!important}
 .leaflet-control-attribution a{color:#ddd!important}
 </style>
@@ -164,6 +166,7 @@ textarea{width:100%;height:120px;background:#0d1f16;color:var(--ink);border:1px 
     <div class="brand">⛳<h1>高爾夫攻略測距</h1></div>
     <div class="step">1・選擇球場</div>
     <div id="courseList"></div>
+    <button class="homesync" id="homeSync">☁ 未設定同步</button>
     <div class="step">2・<span id="modeTitle"></span> 要用哪個功能</div>
     <div class="modes">
       <button class="mode" id="goGuide"><span class="mi">📖</span><b>攻略</b><small>18 洞配桿、官方說明、目標桿數、我的注意事項</small></button>
@@ -188,6 +191,8 @@ textarea{width:100%;height:120px;background:#0d1f16;color:var(--ink);border:1px 
   <button class="btn" id="mGuide">📝 本洞攻略<small>官方說明、建議打法、我的注意事項</small></button>
   <button class="btn" id="mRound">📋 18 洞總覽<small>每洞配桿和目標桿數</small></button>
   <button class="btn" id="mClubs">🏌 球桿距離表</button>
+  <button class="btn" id="mSync">☁ 同步（電腦／手機／平板）<small id="syncState">未設定</small></button>
+  <button class="btn" id="mShare">🔗 產生分享用球場檔<small>只含 18 洞點位，存成 GitHub 上的 course.json</small></button>
   <button class="btn" id="mExport">⇩ 匯出球場資料<small>複製 JSON，可存到 GitHub 或換手機用</small></button>
   <button class="btn" id="mImport">⇧ 匯入球場資料</button>
   <button class="btn pri" id="mClose">關閉</button>
@@ -199,6 +204,8 @@ textarea{width:100%;height:120px;background:#0d1f16;color:var(--ink);border:1px 
   <div class="bag" id="bagGrid"></div>
   <button class="btn pri" id="cSave">完成</button>
 </div></div>
+
+<div class="sheet" id="syncSheet"><div class="in"><h3>☁ 同步</h3><div id="syncBody"></div><button class="btn" onclick="closeAll()">關閉</button></div></div>
 
 <div class="sheet" id="guide"><div class="in" id="guideIn"></div></div>
 
@@ -249,10 +256,32 @@ function load(){
   if(!s||!s.holes){const holes={};for(let i=1;i<=18;i++)holes[i]={};s={holes,cur:1,layer:'nlsc',pins:{},pinDate:''};}
   if(!s.bag)s.bag=DEF_BAG.map(([k,n,d,lo])=>({k,n,d,lo:lo===undefined?null:lo}));
   if(!s.notes)s.notes={};
+  if(!s.ov)s.ov={};if(!s.pt)s.pt={};if(!s.pins)s.pins={};
   delete s.clubs;
   return s;
 }
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+// ---- 儲存＋同步用的修改時間（每洞的點位、筆記、自選桿、推桿、旗位、球桿表各自記時間）----
+const SYNC_KEYS=(()=>{const k=['bag'];for(let i=1;i<=18;i++)k.push('h:'+i,'n:'+i,'o:'+i,'p:'+i,'pin:'+i);return k;})();
+function kGet(k){const[t,n]=k.split(':');return t==='bag'?state.bag:t==='h'?state.holes[n]:t==='n'?state.notes[n]:t==='o'?state.ov[n]:t==='p'?state.pt[n]:state.pins[n];}
+function kSet(k,v){const[t,n]=k.split(':');
+  if(t==='bag'){if(v)state.bag=v;return;}
+  const obj=t==='h'?state.holes:t==='n'?state.notes:t==='o'?state.ov:t==='p'?state.pt:state.pins;
+  if(v===undefined||v===null)(t==='h'?obj[n]={}:delete obj[n]);else obj[n]=v;}
+const isEmpty=v=>v==null||v===''||(Array.isArray(v)?!v.length:typeof v==='object'&&!Object.keys(v).length);
+const sig=k=>JSON.stringify(kGet(k)??null);
+let snap={};
+function initStamps(){
+  if(!state._t)state._t={};
+  for(const k of SYNC_KEYS){if(state._t[k]==null)state._t[k]=isEmpty(kGet(k))?0:1;snap[k]=sig(k);}
+}
+function writeLocal(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+function save(){
+  if(!state._t)initStamps();
+  let changed=false;const now=Date.now();
+  for(const k of SYNC_KEYS){const g=sig(k);if(g!==snap[k]){snap[k]=g;state._t[k]=now;changed=true;}}
+  writeLocal();
+  if(changed&&typeof schedulePush==='function')schedulePush();
+}
 // 旗位只當天有效
 const today=new Date().toLocaleDateString('sv');
 if(state.pinDate!==today){state.pins={};state.pinDate=today;save();}
@@ -366,6 +395,7 @@ function planOv(h,ov,start){
 }
 if(!state.ov)state.ov={};      // 白梯計畫的自選桿（會記住）
 if(!state.pt)state.pt={};      // 切桿後預估一推
+initStamps();
 let liveOv={};                 // 球場上「從這裡」的自選桿（打完下一桿就重來）
 function teePlan(h){const ov=state.ov[h.n];return ov&&ov.length?planOv(h,ov,h.y):bestPlan(h,h.y,true);}
 function chipFin(sh){const f=sh[sh.length-1];return !!(f&&f.fin&&f.d<=30)}
@@ -626,6 +656,7 @@ function enterMap(){
     if(!Object.values(state.holes).some(h=>h.center))toast('先到 ☰ →「設定本洞位置」標出每洞果嶺',3500);},50);
 }
 $('goGuide').onclick=enterGuide;
+$('homeSync').onclick=()=>{renderSync();open('syncSheet');};
 $('goMap').onclick=enterMap;
 $('btnHome').onclick=()=>showView('home');
 $('gvHome').onclick=()=>showView('home');
@@ -640,6 +671,144 @@ $('mImport').onclick=()=>{$('ioTitle').textContent='貼上球場資料 JSON';$('
 // 長按螢幕 = 設旗位（快捷）
 map.on('contextmenu',e=>{if(setting)return;state.pins[state.cur]=[+e.latlng.lat.toFixed(7),+e.latlng.lng.toFixed(7)];save();toast('旗位已設定');update();});
 
+
+// ---- 雲端同步（GitHub Gist，私人）----
+const SYNC_CFG='golf-gps-sync-cfg', GIST_FILE='golf-gps-sync.json';
+let sync={token:'',gistId:''};try{Object.assign(sync,JSON.parse(localStorage.getItem(SYNC_CFG)||'{}'));}catch(e){}
+let syncBusy=false,syncAgain=false,pushTimer=null,lastSync=0,syncErr='';
+const saveCfg=()=>{try{localStorage.setItem(SYNC_CFG,JSON.stringify(sync));}catch(e){}};
+async function gh(path,opt={}){
+  const r=await fetch('https://api.github.com'+path,Object.assign({},opt,{headers:Object.assign({'Authorization':'Bearer '+sync.token,'Accept':'application/vnd.github+json'},opt.body?{'Content-Type':'application/json'}:{})}));
+  if(r.status===401)throw new Error('token 無效或過期');
+  if(r.status===404)throw new Error('找不到同步資料（token 需要 gist 權限）');
+  if(!r.ok)throw new Error('GitHub 回應 '+r.status);
+  return r.json();
+}
+function payload(){
+  const o={v:1,app:'golf-gps',course:'wufeng',pinDate:state.pinDate,_t:{}};const d={};
+  for(const k of SYNC_KEYS){o._t[k]=state._t[k]||0;const v=kGet(k);if(!isEmpty(v))d[k]=v;}
+  o.d=d;return o;
+}
+// 每一項取比較新的；時間一樣時，有資料的贏過空的
+function mergeRemote(rem){
+  if(!rem||!rem._t)return false;let changed=false;
+  const today=new Date().toLocaleDateString('sv');
+  for(const k of SYNC_KEYS){
+    if(k.startsWith('pin:')&&rem.pinDate!==today)continue;
+    const rt=rem._t[k]||0,lt=state._t[k]||0,rv=rem.d?rem.d[k]:undefined;
+    if(rt>lt||(rt===lt&&isEmpty(kGet(k))&&!isEmpty(rv))){
+      if(JSON.stringify(rv??null)!==sig(k)){kSet(k,rv===undefined?undefined:JSON.parse(JSON.stringify(rv)));changed=true;}
+      state._t[k]=rt;snap[k]=sig(k);
+    }
+  }
+  if(changed)writeLocal();
+  return changed;
+}
+async function findOrCreateGist(){
+  for(let page=1;page<=5;page++){
+    const list=await gh('/gists?per_page=100&page='+page);
+    const g=list.find(x=>x.files&&x.files[GIST_FILE]);
+    if(g)return g.id;
+    if(list.length<100)break;
+  }
+  const g=await gh('/gists',{method:'POST',body:JSON.stringify({description:'高爾夫攻略測距 同步資料',public:false,files:{[GIST_FILE]:{content:JSON.stringify(payload())}}})});
+  return g.id;
+}
+async function syncNow(){
+  if(!sync.token)return;
+  if(syncBusy){syncAgain=true;return;}
+  syncBusy=true;syncStatus('同步中…');
+  try{
+    if(!sync.gistId){sync.gistId=await findOrCreateGist();saveCfg();}
+    const g=await gh('/gists/'+sync.gistId);
+    const f=g.files&&g.files[GIST_FILE];
+    let rem=null;
+    if(f){let txt=f.content;if(f.truncated){txt=await (await fetch(f.raw_url)).text();}try{rem=JSON.parse(txt);}catch(e){}}
+    if(mergeRemote(rem))refreshViews();
+    const mine=JSON.stringify(payload());
+    if(!rem||JSON.stringify({...rem,_t:rem._t,d:rem.d})!==mine){
+      // 只有本機有比較新的東西才上傳
+      const need=!rem||SYNC_KEYS.some(k=>(state._t[k]||0)>((rem._t||{})[k]||0));
+      if(need)await gh('/gists/'+sync.gistId,{method:'PATCH',body:JSON.stringify({files:{[GIST_FILE]:{content:mine}}})});
+    }
+    lastSync=Date.now();syncErr='';
+  }catch(e){syncErr=e.message||'網路錯誤';if(/找不到/.test(syncErr)){sync.gistId='';saveCfg();}}
+  syncBusy=false;syncStatus();
+  if(syncAgain){syncAgain=false;syncNow();}
+}
+function schedulePush(){if(!sync.token)return;clearTimeout(pushTimer);pushTimer=setTimeout(syncNow,2500);syncStatus('等待同步…');}
+function syncStatus(t){
+  const txt=t||(!sync.token?'未設定':syncErr?'⚠ '+syncErr:lastSync?'已同步 '+new Date(lastSync).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'已連線');
+  const a=$('syncState');if(a)a.textContent=txt;
+  const b=$('syncInfo');if(b)b.textContent=txt;
+  const c=$('homeSync');if(c)c.textContent=sync.token?'☁ '+txt:'☁ 未設定同步';
+}
+function refreshViews(){
+  update();
+  const ta=document.activeElement;if(ta&&ta.tagName==='TEXTAREA')return; // 正在打字就不要重畫
+  if($('gv').style.display==='block'){$('gvIn').querySelector('.gn')?renderHole($('gvIn'),'page'):renderRound($('gvIn'),'page');}
+  if($('home').style.display==='block')renderHome();
+}
+function renderSync(){
+  $('syncBody').innerHTML=sync.token?`
+    <p class="note">這台裝置已連上同步。球場點位、球桿表、自選打法、注意事項、今天的旗位，會在電腦、手機、平板之間自動同步。</p>
+    <p class="note">狀態：<b id="syncInfo"></b></p>
+    <button class="btn pri" id="sNow">立即同步</button>
+    <button class="btn" id="sOff">這台裝置停止同步<small>資料會留在這台裝置，也留在 GitHub</small></button>`:`
+    <p class="note">用你的 GitHub 帳號在電腦、手機、平板之間同步（資料存在你自己的私人 Gist）。每台裝置貼一次同一組 token 就好。</p>
+    <ol class="note" style="padding-left:18px;line-height:1.7">
+      <li>電腦打開 <b>github.com/settings/tokens</b></li>
+      <li>Generate new token → <b>classic</b></li>
+      <li>Note 隨便填，Expiration 選 <b>No expiration</b></li>
+      <li>只勾 <b>gist</b>，按 Generate，複製 ghp_ 開頭那串</li>
+    </ol>
+    <input id="sTok" class="tok" placeholder="貼上 ghp_… token" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button class="btn pri" id="sOn">連線並同步</button>`;
+  if(sync.token){$('sNow').onclick=syncNow;$('sOff').onclick=()=>{if(confirm('這台裝置停止同步？')){sync={token:'',gistId:''};saveCfg();renderSync();syncStatus();}};}
+  else $('sOn').onclick=async()=>{const t=$('sTok').value.trim();if(!t){toast('請貼上 token');return;}
+    sync.token=t;sync.gistId='';saveCfg();renderSync();await syncNow();
+    if(syncErr){toast(syncErr,3000);sync.token='';saveCfg();renderSync();}else toast('同步完成');};
+  syncStatus();
+}
+$('mSync').onclick=()=>{renderSync();open('syncSheet');};
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')syncNow();});
+setInterval(()=>{if(document.visibilityState==='visible')syncNow();},60000);
+syncStatus();syncNow();
+
+// ---- 內建球場點位：讀 repo 裡的 course.json ----
+// 別人打開同一個網址就有點位；自己改過的洞不會被蓋掉；你更新 course.json，沒改過的人會自動拿到新版
+async function loadBuiltinCourse(){
+  try{
+    const r=await fetch('course.json',{cache:'no-cache'});if(!r.ok)return;
+    const c=await r.json();if(!c||!c.holes)return;
+    if(!state.builtinSeen)state.builtinSeen={};
+    let n=0;
+    for(let i=1;i<=18;i++){
+      const b=c.holes[i];if(!b||isEmpty(b))continue;
+      const cur=state.holes[i]||{};
+      const seen=state.builtinSeen[i];
+      if(isEmpty(cur)||(seen&&JSON.stringify(cur)===JSON.stringify(seen))){
+        if(JSON.stringify(cur)!==JSON.stringify(b)){state.holes[i]=JSON.parse(JSON.stringify(b));n++;}
+        state.builtinSeen[i]=b;
+        snap['h:'+i]=sig('h:'+i);   // 內建資料不算自己的修改，不會蓋過同步的資料
+      }
+    }
+    writeLocal();
+    if(n){update();if(document.body.dataset.view==='map')frame();}
+  }catch(e){}
+}
+function shareCourseJson(){
+  const holes={};
+  for(let i=1;i<=18;i++){const h=state.holes[i];if(h&&!isEmpty(h)){const o={};for(const k of ['tee','front','center','back'])if(h[k])o[k]=h[k];if(!isEmpty(o))holes[i]=o;}}
+  const lines=Object.keys(holes).map(k=>`  "${k}": ${JSON.stringify(holes[k])}`);
+  return `{\n "course": "wufeng",\n "name": "霧峰高爾夫球場",\n "updated": "${new Date().toLocaleDateString('sv')}",\n "holes": {\n${lines.join(',\n')}\n }\n}`;
+}
+$('mShare').onclick=()=>{
+  const j=shareCourseJson();const cnt=Object.keys(JSON.parse(j).holes).length;
+  $('ioTitle').textContent='分享用球場檔（已標 '+cnt+' / 18 洞）';
+  $('ioText').value=j;$('ioCopy').style.display='block';$('ioOk').textContent='完成';$('ioOk').onclick=closeAll;open('io');
+};
+loadBuiltinCourse();
 update();renderHome();showView('home');
 </script>
 </body>
