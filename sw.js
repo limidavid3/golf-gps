@@ -2,7 +2,7 @@
 // 程式本體：先抓網路（才拿得到更新），沒網路用快取
 // 地圖程式庫、圖示：快取優先
 // 正射影像圖磚：快取優先，看過或下載過的都會留著
-const SHELL = 'golf-shell-v3';
+const SHELL = 'golf-shell-v4';
 const TILES = 'golf-tiles-v1';
 const SHELL_FILES = ['./', './index.html', './leaflet.js', './leaflet.css', './leaflet-rotate.js',
   './manifest.webmanifest', './apple-touch-icon.png', './icon-512.png'];
@@ -53,7 +53,7 @@ self.addEventListener('fetch', e => {
   if (TILE_HOSTS.includes(u.hostname)) { e.respondWith(cacheFirst(req, TILES)); return; }
   if (u.origin === self.location.origin) {
     const p = u.pathname;
-    if (req.mode === 'navigate' || p.endsWith('/') || p.endsWith('.html') || p.endsWith('course.json') || p.endsWith('.webmanifest')) {
+    if (req.mode === 'navigate' || p.endsWith('/') || p.endsWith('.html') || /course[^/]*\.json$/.test(p) || p.endsWith('.webmanifest')) {
       e.respondWith(networkFirst(req));
     } else {
       e.respondWith(cacheFirst(req, SHELL));

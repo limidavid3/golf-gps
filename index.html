@@ -193,7 +193,7 @@ body.offline .top::after{content:'離線';position:absolute;left:50%;transform:t
 <div class="toast" id="toast"></div>
 
 <div class="sheet" id="menu"><div class="in">
-  <h3>霧峰攻略測距</h3>
+  <h3 id="menuTitle">攻略測距</h3>
   <button class="btn" id="mSetup">✎ 設定本洞位置<small>點正射影像放發球台、果嶺前緣／中心／後緣</small></button>
   <button class="btn" id="mPin">⚑ 設定／清除今日旗位<small>點果嶺上的旗桿位置，點錯可以移動或清除</small></button>
   <button class="btn" id="mOffline">📥 離線使用<small id="offState">下載球場地圖，沒網路也能看</small></button>
@@ -203,7 +203,7 @@ body.offline .top::after{content:'離線';position:absolute;left:50%;transform:t
   <button class="btn" id="mRound">📋 18 洞總覽<small>每洞配桿和目標桿數</small></button>
   <button class="btn" id="mClubs">🏌 球桿距離表</button>
   <button class="btn" id="mSync">☁ 同步（電腦／手機／平板）<small id="syncState">未設定</small></button>
-  <button class="btn" id="mShare">🔗 產生分享用球場檔<small>只含 18 洞點位，存成 GitHub 上的 course.json</small></button>
+  <button class="btn" id="mShare">🔗 產生分享用球場檔<small id="shareHint">只含 18 洞點位，存成 GitHub 上的 course.json</small></button>
   <button class="btn" id="mExport">⇩ 匯出球場資料<small>複製 JSON，可存到 GitHub 或換手機用</small></button>
   <button class="btn" id="mImport">⇧ 匯入球場資料</button>
   <button class="btn pri" id="mClose">關閉</button>
@@ -230,14 +230,12 @@ body.offline .top::after{content:'離線';position:absolute;left:50%;transform:t
 </div></div>
 
 <script>
-const COURSE_CENTER=[24.03425,120.747948];
-const KEY='wufeng-gps-v1';
 const YD=1.0936133;
 
 // ---- 攻略本資料（霧峰官網球場巡禮・白梯）----
 // adj：上坡/逆風(+) 下坡(-) 要多算/少算的碼數；leave：官方建議留的最後一桿距離
 // hy/drv：可以考慮混合桿/1號木的洞（只有能少一桿才會用）
-const HOLES=[
+const WUFENG_HOLES=[
  {n:1,par:4,y:370,hcp:3,adj:0,tip:'左邊界外、右邊紅樁。果嶺是下坡，第二桿不要打過洞。',plan:'開球瞄球道中間，左邊 OB 比右邊紅樁更傷，寧可偏右。最後一桿寧短勿長，留上坡推桿。'},
  {n:2,par:3,y:176,hcp:9,adj:0,hy:'果嶺打得到，但左邊有沙坑和 OB，一定要瞄果嶺右半邊。',tip:'難度較高的短洞。左邊有沙坑和 OB，官方建議從旗子右方進攻。',plan:'5 鐵一桿很難上果嶺，就不要硬攻。瞄果嶺右前方，停在果嶺前右側，再切上去兩推。左邊絕對不要去。'},
  {n:3,par:5,y:509,hcp:7,adj:0,tip:'球道中間有 921 地震造成的天然塌陷，官方建議開球縮短到約 200 碼。',plan:'你的開球到不了塌陷區，5 鐵可以放心打。第二桿要飛過塌陷區，不要拿太短的桿停在邊緣。'},
@@ -257,17 +255,61 @@ const HOLES=[
  {n:17,par:3,y:102,hcp:18,adj:0,tip:'全場最有特色的短洞，官方說約 90 碼，是全場最容易一桿進洞的洞。',plan:'全場最好的抓鳥機會，直接攻旗。官網文字寫 90 碼、白梯標 102 碼，以當天旗位為準。'},
  {n:18,par:4,y:433,hcp:2,adj:-5,tip:'全場難度第 2。球道經 921 地震後有曲折和起伏，果嶺前右側有水、左側有沙坑，果嶺前低後高。和 11 洞共用發球台、交叉發球。',plan:'長四桿洞，當作五桿洞打，柏忌收尾就好。最後一桿打果嶺中間偏左，避開右前的水；旗在後方要打足。開球前先看 11 洞那組。'}
 ];
+
+// ---- 關西老爺（官網「球道攻略」碼數與說明；難度取自計分卡）----
+const KUANHSI_HOLES=[
+ {n:1,par:4,y:339,hcp:17,adj:0,drv:'球道寬、坡度緩的開場洞，瞄左邊椰子樹就能避開右邊沙坑。',tip:'寬闊平緩的開場洞，瞄左邊椰子樹可避開右側沙坑。果嶺在上坡看不到旗，果嶺往後傾、前方有沙坑，容易打過頭。',plan:'開球瞄左邊椰子樹，右邊沙坑不要去。最後一桿打到旗子下方，寧短勿長，留上坡推桿。'},
+ {n:2,par:4,y:364,hcp:11,adj:0,tip:'左邊是山坡，右邊約 230 碼有沙坑，開球偏左比較好。果嶺周圍沒有障礙，可以積極攻果嶺。',plan:'右邊沙坑你的開球到不了，但還是瞄球道左半邊。果嶺沒有障礙，最後一桿可以直接攻旗。'},
+ {n:3,par:3,y:162,hcp:9,adj:-15,tip:'落差很大的下坡短洞，要少算 15–20 碼或少拿一支桿。果嶺右前、右側、後方都有沙坑，瞄果嶺中央。',plan:'下坡少算約 15 碼。瞄果嶺正中央，寧可短在果嶺前，右邊和後面都是沙坑。'},
+ {n:4,par:5,y:519,hcp:1,adj:0,hy:'第二桿往果嶺右側推進，沒有水，混合桿可以多推進一段。',tip:'全場最難、第二長的洞。左邊是長草，右邊約 200 碼有沙坑，開球瞄前方兩棵椰子樹的左邊。第二桿打高球到果嶺右側。果嶺後方是 OB。',plan:'開球瞄兩棵椰子樹左邊，避開右邊沙坑。一路往果嶺右側推進。果嶺後面是 OB，最後一桿寧短勿長，當作六桿洞打也沒關係。'},
+ {n:5,par:4,y:372,hcp:7,adj:0,tip:'左曲洞，約 250 碼處兩側都有沙坑，開球要直。果嶺左邊和後方有沙坑。',plan:'兩邊的沙坑你的開球到不了，專心打直。最後一桿瞄果嶺中間偏右，避開左邊和後面的沙坑。'},
+ {n:6,par:4,y:372,hcp:13,adj:10,tip:'右曲洞，左邊整排水池，右邊三個沙坑，果嶺旁有長草。開球瞄前方水泥路。上坡，第二桿多算約 10 碼。',plan:'開球瞄水泥路，左邊水池絕對不要去。上坡多算 10 碼，最後一桿桿數拿足。'},
+ {n:7,par:3,y:158,hcp:15,adj:0,tip:'高台開球，果嶺前有兩個大沙坑，要打足才上得去。左邊有水池，瞄右邊，果嶺右側地勢較高。',plan:'距離要打足，瞄果嶺右半邊。寧可偏右也不要偏左下水。'},
+ {n:8,par:5,y:514,hcp:3,adj:0,hy:'全場最長的洞，第二桿用混合桿可以少一桿。',tip:'全場最長的洞，開球瞄會館屋頂。右邊約 220 碼有沙坑。第二桿要避開左邊的沙坑，果嶺被沙坑包圍。',plan:'開球瞄會館屋頂。第二桿留意左邊沙坑。最後一桿打果嶺中間，四周都是沙坑不要追旗。'},
+ {n:9,par:4,y:352,hcp:5,adj:0,tip:'在會館旁。開球瞄左邊四棵椰子樹，注意左邊水池。第二桿要飛過水池和果嶺前沙坑，但打過頭是 OB，果嶺不容易停球。和 18 洞共用月牙湖。',plan:'開球瞄椰子樹但別太左。最後一桿要飛過水池和沙坑，又不能打過 OB：桿數剛好、瞄果嶺中間。'},
+ {n:10,par:4,y:343,hcp:16,adj:-5,tip:'右邊 OB、左邊長草，右邊約 200 碼有三個大沙坑。下坡、距離不長，開球瞄左邊。球道有起伏。',plan:'開球瞄左邊，右邊是 OB 和沙坑。下坡少算一點，第二桿注意站位不平。'},
+ {n:11,par:5,y:512,hcp:6,adj:0,tip:'微左曲五桿洞，右邊 OB，約 230 碼有沙坑，左邊有山丘，從山丘右側飛過可以抄近路。第二桿打左邊。果嶺右邊有大沙坑。',plan:'不用抄近路，穩穩瞄球道中間偏左，右邊整條是 OB。最後一桿瞄果嶺左半邊，避開右邊大沙坑。'},
+ {n:12,par:3,y:168,hcp:14,adj:0,tip:'距離不長，但果嶺四周都有策略性的沙坑。先看旗位再選桿。',plan:'先看旗位再選桿，不管旗在哪都瞄果嶺中間。'},
+ {n:13,par:4,y:380,hcp:4,adj:0,tip:'右邊一路 OB 到果嶺，右邊約 170–270 碼有沙坑，開球稍微偏左。球道起伏。果嶺左、右、後方都有沙坑。',plan:'開球瞄球道偏左，右邊 OB 和沙坑都要避開。果嶺三面沙坑，最後一桿打果嶺前半部。'},
+ {n:14,par:4,y:357,hcp:8,adj:10,tip:'左曲洞，障礙不多，但右邊沿著山邊是 OB。常逆風又是上坡，第二桿不好打。發球台旁有避雷亭。',plan:'開球瞄球道左半邊，遠離右邊 OB。上坡加逆風多算 10 碼，最後一桿拿足。'},
+ {n:15,par:4,y:350,hcp:12,adj:0,tip:'發球台看不到果嶺，開球瞄中段兩個沙坑的中間。旗在右邊時果嶺坡很陡。',plan:'開球瞄兩個沙坑中間。旗在右邊時，最後一桿打到旗子左下方，留上坡推桿。'},
+ {n:16,par:4,y:360,hcp:10,adj:0,tip:'右曲洞，開球稍微偏右。左邊約 250 碼有沙坑。果嶺前有沙坑，果嶺從前往後傾。',plan:'開球稍偏右。最後一桿要飛過果嶺前沙坑，但果嶺往後跑，不要拿太長的桿。'},
+ {n:17,par:3,y:172,hcp:18,adj:0,tip:'離發球台約 50 碼起就是水池，一路包住果嶺左側；果嶺前面和右邊有沙坑。建議打高球直接落在果嶺上。',plan:'瞄果嶺中間偏右，打高球落果嶺。左邊是水，寧可右邊沙坑。'},
+ {n:18,par:5,y:496,hcp:2,adj:0,drv:'比較平坦，開球區沒有提到障礙，可以拿 1 號木。',hy:'第二桿要留在水池左邊，混合桿可以多推進一段。',tip:'比較平坦但很長，果嶺前有少見的長條海灘沙坑。第二桿要留在水池左邊。和 9 洞共用月牙湖。',plan:'第二桿瞄水池左邊。最後一桿要飛過海灘沙坑，桿數拿足，抓博蒂機會。'}
+];
+
+const COURSE_DATA={
+  wufeng:{id:'wufeng',name:'霧峰高爾夫球場',short:'霧峰',sub:'台中霧峰・18 洞 Par 72・白梯 6,223 碼',center:[24.03425,120.747948],key:'wufeng-gps-v1',file:'course.json',tee:'白梯',holes:WUFENG_HOLES},
+  kuanhsi:{id:'kuanhsi',name:'老爺關西高爾夫球場',short:'關西老爺',sub:'新竹關西・18 洞 Par 72・官網碼數 6,290 碼',center:[24.752248,121.197353],key:'kuanhsi-gps-v1',file:'course-kuanhsi.json',tee:'官網碼數',holes:KUANHSI_HOLES}
+};
+const COMING=[{id:'nanfong',name:'南峰'},{id:'fengyuan',name:'豐原'}];
+
+// 球桿表、底圖是共用的；點位、筆記、自選桿、旗位每個球場各自存
+const SHARED_KEY='golf-gps-shared';
+let shared={};try{shared=JSON.parse(localStorage.getItem(SHARED_KEY)||'{}')||{};}catch(e){shared={};}
+if(!shared.bag){ // 第一次：從舊版霧峰資料搬過來
+  try{const old=JSON.parse(localStorage.getItem('wufeng-gps-v1')||'null');if(old&&old.bag){shared.bag=old.bag;shared.tbag=(old._t&&old._t.bag)||1;}if(old&&old.layer)shared.layer=old.layer;}catch(e){}
+}
+let CID=COURSE_DATA[shared.lastCourse]?shared.lastCourse:'wufeng';
+let C,HOLES,COURSE_CENTER,KEY;
+function setCourseVars(id){CID=id;C=COURSE_DATA[id];HOLES=C.holes;COURSE_CENTER=C.center;KEY=C.key;}
+setCourseVars(CID);
 const HI=n=>HOLES[n-1];
 
 // 球桿：挖起桿有範圍（控制揮桿到全揮）
 const DEF_BAG=[['1w','1號木',220],['hy','混合桿',195,180],['5i','5鐵',170],['6i','6鐵',160],['7i','7鐵',150],['8i','8鐵',140],['9i','9鐵',130],['pw','PW',120,90],['52','52°',90,70],['58','58°',70,0]];
 
 let state=load();
-function load(){
+function load(id=CID){
   let s=null;
-  try{s=JSON.parse(localStorage.getItem(KEY));}catch(e){}
+  try{s=JSON.parse(localStorage.getItem(COURSE_DATA[id].key));}catch(e){}
   if(!s||!s.holes){const holes={};for(let i=1;i<=18;i++)holes[i]={};s={holes,cur:1,layer:'nlsc',pins:{},pinDate:''};}
-  if(!s.bag)s.bag=DEF_BAG.map(([k,n,d,lo])=>({k,n,d,lo:lo===undefined?null:lo}));
+  s.bag=shared.bag||s.bag||DEF_BAG.map(([k,n,d,lo])=>({k,n,d,lo:lo===undefined?null:lo}));
+  s.layer=shared.layer||s.layer||'nlsc';
+  if(!s._t)s._t={};
+  s._t.bag=shared.tbag!=null?shared.tbag:(s._t.bag||0);
+  const td=new Date().toLocaleDateString('sv');
+  if(s.pinDate!==td){s.pins={};s.pinDate=td;}   // 旗位只當天有效
   if(!s.notes)s.notes={};
   if(!s.ov)s.ov={};if(!s.pt)s.pt={};if(!s.pins)s.pins={};
   delete s.clubs;
@@ -275,19 +317,27 @@ function load(){
 }
 // ---- 儲存＋同步用的修改時間（每洞的點位、筆記、自選桿、推桿、旗位、球桿表各自記時間）----
 const SYNC_KEYS=(()=>{const k=['bag'];for(let i=1;i<=18;i++)k.push('h:'+i,'n:'+i,'o:'+i,'p:'+i,'pin:'+i);return k;})();
-function kGet(k){const[t,n]=k.split(':');return t==='bag'?state.bag:t==='h'?state.holes[n]:t==='n'?state.notes[n]:t==='o'?state.ov[n]:t==='p'?state.pt[n]:state.pins[n];}
-function kSet(k,v){const[t,n]=k.split(':');
-  if(t==='bag'){if(v)state.bag=v;return;}
-  const obj=t==='h'?state.holes:t==='n'?state.notes:t==='o'?state.ov:t==='p'?state.pt:state.pins;
+function kGet(k,st=state){const[t,n]=k.split(':');return t==='bag'?st.bag:t==='h'?st.holes[n]:t==='n'?st.notes[n]:t==='o'?st.ov[n]:t==='p'?st.pt[n]:st.pins[n];}
+function kSet(k,v,st=state){const[t,n]=k.split(':');
+  if(t==='bag'){if(v)st.bag=v;return;}
+  const obj=t==='h'?st.holes:t==='n'?st.notes:t==='o'?st.ov:t==='p'?st.pt:st.pins;
   if(v===undefined||v===null)(t==='h'?obj[n]={}:delete obj[n]);else obj[n]=v;}
 const isEmpty=v=>v==null||v===''||(Array.isArray(v)?!v.length:typeof v==='object'&&!Object.keys(v).length);
-const sig=k=>JSON.stringify(kGet(k)??null);
+const sig=(k,st=state)=>JSON.stringify(kGet(k,st)??null);
 let snap={};
-function initStamps(){
-  if(!state._t)state._t={};
-  for(const k of SYNC_KEYS){if(state._t[k]==null)state._t[k]=isEmpty(kGet(k))?0:1;snap[k]=sig(k);}
+function initStamps(st=state,sn=snap){
+  if(!st._t)st._t={};
+  for(const k of SYNC_KEYS){if(st._t[k]==null)st._t[k]=isEmpty(kGet(k,st))?0:1;if(sn)sn[k]=sig(k,st);}
 }
-function writeLocal(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+function writeShared(){
+  shared.bag=state.bag;shared.layer=state.layer;shared.tbag=(state._t||{}).bag||0;shared.lastCourse=CID;
+  try{localStorage.setItem(SHARED_KEY,JSON.stringify(shared));}catch(e){}
+}
+function writeCourse(id,st){
+  const o=Object.assign({},st);delete o.bag;delete o.layer;
+  try{localStorage.setItem(COURSE_DATA[id].key,JSON.stringify(o));}catch(e){}
+}
+function writeLocal(){writeCourse(CID,state);writeShared();}
 function save(){
   if(!state._t)initStamps();
   let changed=false;const now=Date.now();
@@ -295,9 +345,7 @@ function save(){
   writeLocal();
   if(changed&&typeof schedulePush==='function')schedulePush();
 }
-// 旗位只當天有效
-const today=new Date().toLocaleDateString('sv');
-if(state.pinDate!==today){state.pins={};state.pinDate=today;save();}
+writeShared();
 
 const $=id=>document.getElementById(id);
 function toast(t,ms=1800){const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>e.style.display='none',ms);}
@@ -607,9 +655,9 @@ function renderHole(el,mode){
   const mineT=!!(state.ov[h.n]&&state.ov[h.n].length), mineL=!!(p.live&&liveOv[h.n]);
   el.innerHTML=`
     ${mode==='page'?`<button class="back" data-a="round">‹ 18 洞總覽</button>`:''}
-    <div class="gh"><span class="gn">${h.n}</span><span class="gm">PAR <b>${h.par}</b>　${h.y} 碼　難度 <b>${h.hcp}</b></span><span class="gt"><small>目標</small>${tee.length+nPutts(h.n,tee)}</span></div>
+    <div class="gh"><span class="gn">${h.n}</span><span class="gm">PAR <b>${h.par}</b>　${h.y} 碼　難度 <b>${h.hcp}</b>${(()=>{const p=state.holes[h.n]||{};return p.tee&&p.center?`<br><small>實測 發球台→果嶺中心 ${yds(ll(p.tee),ll(p.center))} 碼</small>`:''})()}</span><span class="gt"><small>目標</small>${tee.length+nPutts(h.n,tee)}</span></div>
     ${p.live?`<div class="lab">從現在位置（${p.start} 碼）・點球桿可以換${mineL?' <button class="reset" data-a="resetL">回到建議</button>':''}</div><ol class="shots">${shotList(p.shots,h,'live')}</ol>`:''}
-    <div class="lab">${p.live?'原本的打法（白梯）':'打法（白梯）'}・點球桿可以換，後面會重算${mineT?' <button class="reset" data-a="resetT">回到建議</button>':''}</div>
+    <div class="lab">${p.live?'原本的打法（'+C.tee+'）':'打法（'+C.tee+'）'}・點球桿可以換，後面會重算${mineT?' <button class="reset" data-a="resetT">回到建議</button>':''}</div>
     <ol class="shots">${shotList(tee,h,'tee')}</ol>
     ${h.hy||h.drv?`<p class="txt ${long?'ok':''}"><span class="lab">長桿</span>${h.drv||h.hy} ${long?'這洞用長桿可以少一桿。':'但換長桿也不會少桿，維持原本打法比較穩。'}</p>`:''}
     <p class="txt"><span class="lab">官方</span>${h.tip}</p>
@@ -649,13 +697,24 @@ $('mGuide').onclick=openGuide;
 $('mRound').onclick=()=>{renderRound($('guideIn'),'sheet');open('guide');$('guideIn').scrollTop=0;};
 
 // ---- 首頁：選球場 → 選攻略或測距 ----
-const COURSES=[
-  {id:'wufeng',name:'霧峰高爾夫球場',sub:'台中霧峰・18 洞 Par 72・白梯 6,223 碼',ready:true},
-  {id:'kuanhsi',name:'關西老爺',sub:'準備中',ready:false},
-  {id:'nanfong',name:'南峰',sub:'準備中',ready:false},
-  {id:'fengyuan',name:'豐原',sub:'準備中',ready:false}
-];
-let pickedCourse='wufeng';
+let pickedCourse=CID;
+function switchCourse(id){
+  if(id===CID||!COURSE_DATA[id])return;
+  writeLocal();
+  setCourseVars(id);
+  state=load(id);snap={};initStamps();
+  liveOv={};tapPt=null;framedOnHole=0;setting=false;pinMode=false;
+  $('setbar').style.display='none';$('pinbar').style.display='none';$('dist').style.display='block';
+  offInfo=offAll[CID]||{};
+  writeShared();
+  map.setBearing(0);map.setView(COURSE_CENTER,16,{animate:false});
+  courseTexts();update();loadBuiltinCourse();offStatus();
+}
+function courseTexts(){
+  $('menuTitle').textContent=C.short+'攻略測距';
+  const sh=$('shareHint');if(sh)sh.textContent='只含 18 洞點位，存成 GitHub 上的 '+C.file;
+  document.title=C.short+'・攻略測距';
+}
 function showView(v){
   document.body.dataset.view=v;
   $('home').style.display=v==='home'?'block':'none';
@@ -663,14 +722,15 @@ function showView(v){
   closeAll();
 }
 function renderHome(){
-  $('courseList').innerHTML=COURSES.map(c=>`<button class="course${c.id===pickedCourse?' on':''}" data-id="${c.id}"${c.ready?'':' disabled'}><b>${c.name}</b><small>${c.sub}</small></button>`).join('');
-  $('courseList').querySelectorAll('.course').forEach(b=>b.onclick=()=>{pickedCourse=b.dataset.id;renderHome();});
-  const c=COURSES.find(x=>x.id===pickedCourse);
-  $('modeTitle').textContent=c?c.name.replace('高爾夫球場',''):'';
+  const done=id=>{const st=id===CID?state:load(id);return Object.values(st.holes||{}).filter(h=>h&&h.center).length;};
+  $('courseList').innerHTML=Object.values(COURSE_DATA).map(c=>`<button class="course${c.id===pickedCourse?' on':''}" data-id="${c.id}"><b>${c.name}</b><small>${c.sub}・已標 ${done(c.id)}/18 洞</small></button>`).join('')
+    +COMING.map(c=>`<button class="course" disabled><b>${c.name}</b><small>準備中</small></button>`).join('');
+  $('courseList').querySelectorAll('.course[data-id]').forEach(b=>b.onclick=()=>{pickedCourse=b.dataset.id;switchCourse(pickedCourse);renderHome();});
+  $('modeTitle').textContent=COURSE_DATA[pickedCourse].short;
 }
 function enterGuide(){
   showView('guide');
-  $('gvTitle').textContent=COURSES.find(x=>x.id===pickedCourse).name.replace('高爾夫球場','')+'・攻略';
+  $('gvTitle').textContent=C.short+'・攻略';
   renderRound($('gvIn'),'page');($('gv').scrollTop=0);
 }
 function enterMap(){
@@ -686,10 +746,10 @@ $('gvHome').onclick=()=>showView('home');
 $('gvMap').onclick=enterMap;
 $('mToGuide').onclick=enterGuide;
 
-$('mExport').onclick=()=>{$('ioTitle').textContent='匯出球場資料';$('ioText').value=JSON.stringify({course:'霧峰',holes:state.holes,bag:state.bag,notes:state.notes,ov:state.ov,pt:state.pt});$('ioCopy').style.display='block';$('ioOk').textContent='完成';$('ioOk').onclick=closeAll;open('io');};
+$('mExport').onclick=()=>{$('ioTitle').textContent='匯出'+C.short+'資料';$('ioText').value=JSON.stringify({course:CID,holes:state.holes,bag:state.bag,notes:state.notes,ov:state.ov,pt:state.pt});$('ioCopy').style.display='block';$('ioOk').textContent='完成';$('ioOk').onclick=closeAll;open('io');};
 $('ioCopy').onclick=()=>{navigator.clipboard.writeText($('ioText').value).then(()=>toast('已複製'),()=>{$('ioText').select();toast('請長按全選複製');});};
 $('mImport').onclick=()=>{$('ioTitle').textContent='貼上球場資料 JSON';$('ioText').value='';$('ioCopy').style.display='none';$('ioOk').textContent='匯入';
-  $('ioOk').onclick=()=>{try{const d=JSON.parse($('ioText').value);if(!d.holes)throw 0;state.holes=d.holes;if(d.bag)state.bag=d.bag;if(d.notes)state.notes=d.notes;if(d.ov)state.ov=d.ov;if(d.pt)state.pt=d.pt;save();closeAll();update();frame();toast('匯入完成');}catch(e){toast('格式不對');}};open('io');};
+  $('ioOk').onclick=()=>{try{const d=JSON.parse($('ioText').value);if(!d.holes)throw 0;if(d.course&&COURSE_DATA[d.course]&&d.course!==CID&&!confirm('這是'+COURSE_DATA[d.course].short+'的資料，要匯入到目前的'+C.short+'嗎？'))return;state.holes=d.holes;if(d.bag)state.bag=d.bag;if(d.notes)state.notes=d.notes;if(d.ov)state.ov=d.ov;if(d.pt)state.pt=d.pt;save();closeAll();update();frame();toast('匯入完成');}catch(e){toast('格式不對');}};open('io');};
 
 // 長按螢幕 = 設旗位（快捷）
 map.on('contextmenu',e=>{if(setting||pinMode)return;state.pins[state.cur]=[+e.latlng.lat.toFixed(7),+e.latlng.lng.toFixed(7)];save();update();startPin();});
@@ -707,25 +767,56 @@ async function gh(path,opt={}){
   if(!r.ok)throw new Error('GitHub 回應 '+r.status);
   return r.json();
 }
+// 同步檔 v2：{bag:{t,d}, courses:{球場id:{pinDate,_t,d}}}；舊版 v1 只有霧峰
+const COURSE_KEYS=SYNC_KEYS.filter(k=>k!=='bag');
+function courseState(id){if(id===CID)return state;const st=load(id);initStamps(st,null);return st;}
+function coursePart(st){const o={pinDate:st.pinDate,_t:{},d:{}};for(const k of COURSE_KEYS){o._t[k]=st._t[k]||0;const v=kGet(k,st);if(!isEmpty(v))o.d[k]=v;}return o;}
 function payload(){
-  const o={v:1,app:'golf-gps',course:'wufeng',pinDate:state.pinDate,_t:{}};const d={};
-  for(const k of SYNC_KEYS){o._t[k]=state._t[k]||0;const v=kGet(k);if(!isEmpty(v))d[k]=v;}
-  o.d=d;return o;
+  const o={v:2,app:'golf-gps',bag:{t:state._t.bag||0,d:state.bag},courses:{}};
+  for(const id in COURSE_DATA)o.courses[id]=coursePart(courseState(id));
+  return o;
+}
+function normRemote(rem){
+  if(!rem)return null;
+  if(rem.v===2&&rem.courses)return rem;
+  if(rem._t){ // v1 → v2
+    const c={pinDate:rem.pinDate,_t:{},d:{}};
+    for(const k of COURSE_KEYS){c._t[k]=rem._t[k]||0;if(rem.d&&rem.d[k]!==undefined)c.d[k]=rem.d[k];}
+    return{v:2,bag:{t:rem._t.bag||0,d:rem.d?rem.d.bag:undefined},courses:{wufeng:c}};
+  }
+  return null;
 }
 // 每一項取比較新的；時間一樣時，有資料的贏過空的
-function mergeRemote(rem){
-  if(!rem||!rem._t)return false;let changed=false;
-  const today=new Date().toLocaleDateString('sv');
-  for(const k of SYNC_KEYS){
-    if(k.startsWith('pin:')&&rem.pinDate!==today)continue;
-    const rt=rem._t[k]||0,lt=state._t[k]||0,rv=rem.d?rem.d[k]:undefined;
-    if(rt>lt||(rt===lt&&isEmpty(kGet(k))&&!isEmpty(rv))){
-      if(JSON.stringify(rv??null)!==sig(k)){kSet(k,rv===undefined?undefined:JSON.parse(JSON.stringify(rv)));changed=true;}
-      state._t[k]=rt;snap[k]=sig(k);
+function mergeKeys(st,rc,sn){
+  let changed=false;const td=new Date().toLocaleDateString('sv');
+  for(const k of COURSE_KEYS){
+    if(k.startsWith('pin:')&&rc.pinDate!==td)continue;
+    const rt=(rc._t||{})[k]||0,lt=st._t[k]||0,rv=rc.d?rc.d[k]:undefined;
+    if(rt>lt||(rt===lt&&isEmpty(kGet(k,st))&&!isEmpty(rv))){
+      if(JSON.stringify(rv??null)!==sig(k,st)){kSet(k,rv===undefined?undefined:JSON.parse(JSON.stringify(rv)),st);changed=true;}
+      st._t[k]=rt;if(sn)sn[k]=sig(k,st);
     }
   }
-  if(changed)writeLocal();
   return changed;
+}
+function mergeRemote(raw){
+  const rem=normRemote(raw);if(!rem)return false;let changed=false;
+  if(rem.bag&&rem.bag.d){const rt=rem.bag.t||0,lt=state._t.bag||0;
+    if(rt>lt){if(JSON.stringify(rem.bag.d)!==sig('bag')){state.bag=JSON.parse(JSON.stringify(rem.bag.d));changed=true;}state._t.bag=rt;snap.bag=sig('bag');}}
+  for(const id in COURSE_DATA){
+    const rc=rem.courses[id];if(!rc)continue;
+    if(id===CID){if(mergeKeys(state,rc,snap))changed=true;}
+    else{const st=courseState(id);if(mergeKeys(st,rc,null))writeCourse(id,st);}
+  }
+  writeLocal();
+  return changed;
+}
+function needPush(raw){
+  const rem=normRemote(raw);if(!rem||raw.v!==2)return true;
+  if((state._t.bag||0)>((rem.bag||{}).t||0))return true;
+  for(const id in COURSE_DATA){const st=courseState(id),rc=rem.courses[id]||{_t:{}};
+    if(COURSE_KEYS.some(k=>(st._t[k]||0)>((rc._t||{})[k]||0)))return true;}
+  return false;
 }
 async function findOrCreateGist(){
   for(let page=1;page<=5;page++){
@@ -748,12 +839,8 @@ async function syncNow(){
     let rem=null;
     if(f){let txt=f.content;if(f.truncated){txt=await (await fetch(f.raw_url)).text();}try{rem=JSON.parse(txt);}catch(e){}}
     if(mergeRemote(rem))refreshViews();
-    const mine=JSON.stringify(payload());
-    if(!rem||JSON.stringify({...rem,_t:rem._t,d:rem.d})!==mine){
-      // 只有本機有比較新的東西才上傳
-      const need=!rem||SYNC_KEYS.some(k=>(state._t[k]||0)>((rem._t||{})[k]||0));
-      if(need)await gh('/gists/'+sync.gistId,{method:'PATCH',body:JSON.stringify({files:{[GIST_FILE]:{content:mine}}})});
-    }
+    // 只有本機有比較新的東西才上傳
+    if(needPush(rem))await gh('/gists/'+sync.gistId,{method:'PATCH',body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(payload())}}})});
     lastSync=Date.now();syncErr='';
   }catch(e){syncErr=e.message||'網路錯誤';if(/找不到/.test(syncErr)){sync.gistId='';saveCfg();}}
   syncBusy=false;syncStatus();
@@ -774,7 +861,7 @@ function refreshViews(){
 }
 function renderSync(){
   $('syncBody').innerHTML=sync.token?`
-    <p class="note">這台裝置已連上同步。球場點位、球桿表、自選打法、注意事項、今天的旗位，會在電腦、手機、平板之間自動同步。</p>
+    <p class="note">這台裝置已連上同步。所有球場的點位、自選打法、注意事項、今天的旗位，還有球桿表，會在電腦、手機、平板之間自動同步。</p>
     <p class="note">狀態：<b id="syncInfo"></b></p>
     <button class="btn pri" id="sNow">立即同步</button>
     <button class="btn" id="sOff">這台裝置停止同步<small>資料會留在這台裝置，也留在 GitHub</small></button>`:`
@@ -801,8 +888,9 @@ syncStatus();syncNow();
 // ---- 內建球場點位：讀 repo 裡的 course.json ----
 // 別人打開同一個網址就有點位；自己改過的洞不會被蓋掉；你更新 course.json，沒改過的人會自動拿到新版
 async function loadBuiltinCourse(){
+  const id=CID;
   try{
-    const r=await fetch('course.json',{cache:'no-cache'});if(!r.ok)return;
+    const r=await fetch(C.file,{cache:'no-cache'});if(!r.ok||id!==CID)return;
     const c=await r.json();if(!c||!c.holes)return;
     if(!state.builtinSeen)state.builtinSeen={};
     let n=0;
@@ -824,11 +912,11 @@ function shareCourseJson(){
   const holes={};
   for(let i=1;i<=18;i++){const h=state.holes[i];if(h&&!isEmpty(h)){const o={};for(const k of ['tee','front','center','back'])if(h[k])o[k]=h[k];if(!isEmpty(o))holes[i]=o;}}
   const lines=Object.keys(holes).map(k=>`  "${k}": ${JSON.stringify(holes[k])}`);
-  return `{\n "course": "wufeng",\n "name": "霧峰高爾夫球場",\n "updated": "${new Date().toLocaleDateString('sv')}",\n "holes": {\n${lines.join(',\n')}\n }\n}`;
+  return `{\n "course": "${CID}",\n "name": "${C.name}",\n "updated": "${new Date().toLocaleDateString('sv')}",\n "holes": {\n${lines.join(',\n')}\n }\n}`;
 }
 $('mShare').onclick=()=>{
   const j=shareCourseJson();const cnt=Object.keys(JSON.parse(j).holes).length;
-  $('ioTitle').textContent='分享用球場檔（已標 '+cnt+' / 18 洞）';
+  $('ioTitle').textContent=C.short+' 分享用球場檔（已標 '+cnt+' / 18 洞）・存成 '+C.file;
   $('ioText').value=j;$('ioCopy').style.display='block';$('ioOk').textContent='完成';$('ioOk').onclick=closeAll;open('io');
 };
 loadBuiltinCourse();
@@ -841,7 +929,9 @@ if('serviceWorker' in navigator&&window.isSecureContext&&location.protocol!=='fi
 }
 const TILE_URLS={nlsc:'https://wmts.nlsc.gov.tw/wmts/PHOTO2/default/GoogleMapsCompatible/{z}/{y}/{x}',esri:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'};
 const OFF_KEY='golf-gps-offline';
-let offInfo={};try{offInfo=JSON.parse(localStorage.getItem(OFF_KEY)||'{}');}catch(e){}
+let offAll={};try{offAll=JSON.parse(localStorage.getItem(OFF_KEY)||'{}')||{};}catch(e){}
+if(offAll.count)offAll={wufeng:offAll};          // 舊版只有霧峰
+let offInfo=offAll[CID]||{};
 let offRunning=false,offAbort=false;
 function courseBounds(){
   const pts=[];
@@ -888,7 +978,7 @@ async function downloadTiles(){
   await Promise.all([1,2,3,4,5,6].map(worker));
   offRunning=false;
   offInfo={layer,count:ok,total:list.length,date:new Date().toLocaleDateString('sv')};
-  try{localStorage.setItem(OFF_KEY,JSON.stringify(offInfo));}catch(e){}
+  offAll[CID]=offInfo;try{localStorage.setItem(OFF_KEY,JSON.stringify(offAll));}catch(e){}
   renderOffline();offStatus();
   toast(offAbort?'已停止下載':fail?`下載完成，${fail} 張失敗，可以再按一次補下載`:'離線地圖下載完成');
 }
@@ -901,8 +991,9 @@ function renderOffline(){
   const hasPts=Object.values(state.holes).filter(h=>h&&h.center).length;
   $('offBody').innerHTML=`
     <p class="note">${swReady?'✅ app 本身已經存在這台裝置，沒網路也打得開。':(window.isSecureContext&&location.protocol!=='file:')?'⏳ 正在準備離線功能，稍等一下再打開這頁。':'⚠ 要用 GitHub Pages 的網址（https）打開，才能離線使用。'}</p>
+    <p class="note">每個球場的地圖要分別下載：先在首頁選好球場，再進來這裡。</p>
     <p class="note">GPS 不需要網路，沒訊號一樣能定位測距。攻略、球桿表、筆記、旗位都存在手機裡；同步會等有網路時自動補上。</p>
-    <p class="note"><b>地圖要先下載：</b>${hasPts>=2?`範圍是你標好的 ${hasPts} 洞周圍`:'還沒標點位，先下載球場周圍約 1.8 公里'}，底圖用目前的「${layerNames[state.layer]}」，共 ${list.length} 張（約 ${Math.round(list.length*25/1024)}～${Math.round(list.length*45/1024)} MB）。建議在家用 Wi-Fi 下載。</p>
+    <p class="note"><b>${C.short}的地圖要先下載：</b>${hasPts>=2?`範圍是你標好的 ${hasPts} 洞周圍`:'還沒標點位，先下載球場周圍約 1.8 公里'}，底圖用目前的「${layerNames[state.layer]}」，共 ${list.length} 張（約 ${Math.round(list.length*25/1024)}～${Math.round(list.length*45/1024)} MB）。建議在家用 Wi-Fi 下載。</p>
     ${offInfo.count?`<p class="note">上次下載：${offInfo.date}，${offInfo.count} 張（${layerNames[offInfo.layer]||''}）</p>`:''}
     <div id="offProg"></div>
     <button class="btn pri" id="offGo">${offRunning?'下載中…':offInfo.count?'重新下載／補下載':'下載離線地圖'}</button>
@@ -910,14 +1001,16 @@ function renderOffline(){
     <button class="btn" id="offClr">刪除已下載的地圖</button>`;
   $('offGo').onclick=()=>{if(!offRunning){downloadTiles();renderOffline();}};
   const st=$('offStop');if(st)st.onclick=()=>{offAbort=true;};
-  $('offClr').onclick=async()=>{if(!confirm('刪除已下載的離線地圖？'))return;try{await caches.delete('golf-tiles-v1');}catch(e){}offInfo={};try{localStorage.removeItem(OFF_KEY);}catch(e){}renderOffline();offStatus();toast('已刪除');};
+  $('offClr').onclick=async()=>{if(!confirm('刪除'+C.short+'已下載的離線地圖？'))return;
+    try{const cache=await caches.open('golf-tiles-v1');for(const ly of Object.keys(TILE_URLS))for(const t of list)await cache.delete(tileUrl(ly,t));}catch(e){}
+    offInfo={};delete offAll[CID];try{localStorage.setItem(OFF_KEY,JSON.stringify(offAll));}catch(e){}renderOffline();offStatus();toast('已刪除');};
 }
 $('mOffline').onclick=()=>{renderOffline();open('offSheet');};
 function netBadge(){document.body.classList.toggle('offline',!navigator.onLine);}
 addEventListener('online',()=>{netBadge();syncNow();});
 addEventListener('offline',netBadge);
 netBadge();offStatus();
-update();renderHome();showView('home');
+courseTexts();update();renderHome();showView('home');
 </script>
 </body>
 </html>
