@@ -2,7 +2,7 @@
 // 程式本體：先抓網路（才拿得到更新），沒網路用快取
 // 地圖程式庫、圖示：快取優先
 // 正射影像圖磚：快取優先，看過或下載過的都會留著
-const SHELL = 'golf-shell-v4';
+const SHELL = 'golf-shell-v5';
 const TILES = 'golf-tiles-v1';
 const SHELL_FILES = ['./', './index.html', './leaflet.js', './leaflet.css', './leaflet-rotate.js',
   './manifest.webmanifest', './apple-touch-icon.png', './icon-512.png'];

@@ -115,6 +115,11 @@ textarea{width:100%;height:120px;background:#0d1f16;color:var(--ink);border:1px 
 .homesync{display:block;margin:10px 0 0 auto;background:none;border:1px solid var(--line);color:var(--mute);border-radius:20px;padding:6px 12px;font-size:13px}
 .pbar{height:8px;border-radius:4px;background:#ffffff1a;overflow:hidden;margin:6px 0}.pbar i{display:block;height:100%;background:var(--acc)}
 body.offline .top::after{content:'離線';position:absolute;left:50%;transform:translateX(-50%);bottom:-14px;font-size:11px;background:#000a;color:#ffd27a;padding:1px 8px;border-radius:8px}
+.compass{position:fixed;right:12px;top:calc(env(safe-area-inset-top) + 64px);z-index:1000;width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:var(--panel);padding:0;display:flex;align-items:center;justify-content:center}
+.compass svg{width:34px;height:34px;transition:transform .15s}
+.compass b{position:absolute;top:1px;left:0;right:0;text-align:center;font-size:9px;color:var(--mute);pointer-events:none}
+.compass.off{border-color:var(--acc)}
+body[data-view=home] .compass,body[data-view=guide] .compass{display:none}
 .leaflet-control-attribution{font-size:9px!important;background:#0006!important;color:#ccc!important}
 .leaflet-control-attribution a{color:#ddd!important}
 </style>
@@ -133,6 +138,8 @@ body.offline .top::after{content:'離線';position:absolute;left:50%;transform:t
   <button class="ic" id="btnFollow" title="跟隨GPS">◎</button>
   <button class="ic" id="btnMenu" title="選單">☰</button>
 </div>
+
+<button class="compass" id="btnNorth" title="回到正北" aria-label="地圖回到正北"><svg viewBox="0 0 40 40" id="needle"><path d="M20 5 L26 21 L20 18 L14 21 Z" fill="#e5483b"/><path d="M20 35 L14 19 L20 22 L26 19 Z" fill="#f4f1e6"/></svg><b id="northN">N</b></button>
 
 <div class="dist" id="dist">
   <button class="planrow" id="planRow" aria-label="打開本洞攻略"></button>
@@ -351,7 +358,7 @@ const $=id=>document.getElementById(id);
 function toast(t,ms=1800){const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>e.style.display='none',ms);}
 
 // ---- 地圖 ----
-const map=L.map('map',{zoomControl:false,attributionControl:true,maxZoom:21,zoomSnap:0,rotate:true,bearing:0,touchRotate:false,rotateControl:false,shiftKeyRotate:false}).setView(COURSE_CENTER,16);
+const map=L.map('map',{zoomControl:false,attributionControl:true,maxZoom:21,zoomSnap:0,rotate:true,bearing:0,touchRotate:true,rotateControl:false,shiftKeyRotate:false}).setView(COURSE_CENTER,16);
 const layers={
   nlsc:L.tileLayer('https://wmts.nlsc.gov.tw/wmts/PHOTO2/default/GoogleMapsCompatible/{z}/{y}/{x}',{maxNativeZoom:19,maxZoom:21,attribution:'正射影像 © 內政部國土測繪中心'}),
   esri:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:19,maxZoom:21,attribution:'Imagery © Esri'})
@@ -1010,6 +1017,12 @@ function netBadge(){document.body.classList.toggle('offline',!navigator.onLine);
 addEventListener('online',()=>{netBadge();syncNow();});
 addEventListener('offline',netBadge);
 netBadge();offStatus();
+
+// ---- 兩指旋轉＋指北針（點一下回正北）----
+function compassUpdate(){const b=map.getBearing();$('needle').style.transform='rotate('+b+'deg)';const off=Math.abs(((b%360)+360)%360)>1&&Math.abs(((b%360)+360)%360-360)>1;$('btnNorth').classList.toggle('off',off);}
+map.on('rotate',compassUpdate);
+$('btnNorth').onclick=()=>{map.setBearing(0);compassUpdate();toast('正北朝上・按 ◎ 回到朝向果嶺',1600);};
+compassUpdate();
 courseTexts();update();renderHome();showView('home');
 </script>
 </body>
