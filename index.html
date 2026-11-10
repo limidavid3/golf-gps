@@ -899,6 +899,7 @@ async function loadBuiltinCourse(){
   try{
     const r=await fetch(C.file,{cache:'no-cache'});if(!r.ok||id!==CID)return;
     const c=await r.json();if(!c||!c.holes)return;
+    if(c.course&&c.course!==id)return;   // 檔案放錯球場（例如把關西的點位存成 course.json）就不載入
     if(!state.builtinSeen)state.builtinSeen={};
     let n=0;
     for(let i=1;i<=18;i++){
