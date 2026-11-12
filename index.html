@@ -285,9 +285,32 @@ const KUANHSI_HOLES=[
  {n:18,par:5,y:496,hcp:2,adj:0,drv:'比較平坦，開球區沒有提到障礙，可以拿 1 號木。',hy:'第二桿要留在水池左邊，混合桿可以多推進一段。',tip:'比較平坦但很長，果嶺前有少見的長條海灘沙坑。第二桿要留在水池左邊。和 9 洞共用月牙湖。',plan:'第二桿瞄水池左邊。最後一桿要飛過海灘沙坑，桿數拿足，抓博蒂機會。'}
 ];
 
+// ---- 松柏嶺（白梯碼數與難度取自環球高爾夫球場資訊；網路上只有第 5、10 洞的具體說明）----
+const SONGBAI_HOLES=[
+ {n:1,par:5,y:490,hcp:3,adj:0,hy:'沒有資料顯示開球區有特別障礙，混合桿可以多推進一段；兩邊是樹林，打不直就不要用。',tip:'',plan:'開場長五桿，兩邊樹林，不貪距離，三桿穩穩上果嶺。'},
+ {n:2,par:4,y:345,hcp:13,adj:0,tip:'',plan:'中短四桿洞，開球放球道中間，最後一桿打果嶺中間，炮台果嶺寧長勿短。'},
+ {n:3,par:4,y:390,hcp:9,adj:0,tip:'',plan:'偏長的四桿洞，兩桿上不去就當作五桿洞打，留一個好切的位置。'},
+ {n:4,par:3,y:120,hcp:17,adj:0,tip:'',plan:'全場最短的洞。炮台果嶺，短了會滾下來，桿數拿足直接攻旗。'},
+ {n:5,par:5,y:553,hcp:1,adj:10,tip:'全場最難的魔鬼洞。S 型上坡長洞，先往左彎再往右拐，接近果嶺要從左邊進攻。兩側都是樹林，球道只有約 35 碼寬，山壁上有 OB 樁。',plan:'開球用最有把握打直的桿。順著 S 型一段一段推進，最後一桿從左邊進攻。上坡多算 10 碼，打成柏忌就很好。'},
+ {n:6,par:3,y:160,hcp:15,adj:0,tip:'',plan:'炮台果嶺，寧長勿短，瞄果嶺中間。'},
+ {n:7,par:4,y:387,hcp:5,adj:0,tip:'洞區旁有圓形賣店。',plan:'難度第 5 的長四桿洞，當作五桿洞打，不要硬拚兩桿上果嶺。'},
+ {n:8,par:4,y:358,hcp:11,adj:0,tip:'',plan:'開球打球道中間，最後一桿瞄果嶺中間、桿數拿足。'},
+ {n:9,par:4,y:411,hcp:7,adj:0,tip:'',plan:'長四桿洞，當作五桿洞打，柏忌收前九就好。'},
+ {n:10,par:4,y:378,hcp:10,adj:-5,tip:'高台開球、居高臨下，遠處山景很漂亮。球道左邊是 OB，右邊約 150 碼有沙坑；第一桿落點會影響第二桿怎麼打。',plan:'瞄球道右半邊，左邊 OB 絕對不要去。右邊沙坑約 150 碼，從高台用 5 鐵會飛過它。'},
+ {n:11,par:5,y:552,hcp:4,adj:0,hy:'沒有資料顯示有特別的障礙，混合桿可以多推進一段；兩邊是樹林，打不直就不要用。',tip:'',plan:'很長的五桿洞，分段推進，每一桿都打球道中間。'},
+ {n:12,par:4,y:370,hcp:12,adj:0,tip:'',plan:'開球打球道中間，最後一桿瞄果嶺中間。'},
+ {n:13,par:3,y:160,hcp:18,adj:0,tip:'',plan:'全場最簡單的洞。炮台果嶺，桿數拿足，可以攻旗。'},
+ {n:14,par:4,y:362,hcp:16,adj:0,tip:'',plan:'難度低的四桿洞，可以打積極一點，最後一桿攻旗。'},
+ {n:15,par:4,y:408,hcp:2,adj:0,tip:'',plan:'全場難度第 2，當作五桿洞打，柏忌就好。'},
+ {n:16,par:4,y:427,hcp:6,adj:0,tip:'梯台後方有方形賣店。',plan:'很長的四桿洞，當作五桿洞打，留一個好切的距離。'},
+ {n:17,par:3,y:170,hcp:14,adj:0,tip:'',plan:'最長的三桿洞，剛好是 5 鐵全揮。打不上果嶺就瞄果嶺前方，炮台果嶺不要短在坡下。'},
+ {n:18,par:5,y:485,hcp:8,adj:0,hy:'沒有資料顯示有特別的障礙，混合桿可以多推進一段；兩邊是樹林，打不直就不要用。',tip:'',plan:'收尾的五桿洞，三桿上果嶺，兩推收尾。'}
+];
+
 const COURSE_DATA={
   wufeng:{id:'wufeng',name:'霧峰高爾夫球場',short:'霧峰',sub:'台中霧峰・18 洞 Par 72・白梯 6,223 碼',center:[24.03425,120.747948],key:'wufeng-gps-v1',file:'course.json',tee:'白梯',holes:WUFENG_HOLES},
-  kuanhsi:{id:'kuanhsi',name:'老爺關西高爾夫球場',short:'關西老爺',sub:'新竹關西・18 洞 Par 72・官網碼數 6,290 碼',center:[24.752248,121.197353],key:'kuanhsi-gps-v1',file:'course-kuanhsi.json',tee:'官網碼數',holes:KUANHSI_HOLES}
+  kuanhsi:{id:'kuanhsi',name:'老爺關西高爾夫球場',short:'關西老爺',sub:'新竹關西・18 洞 Par 72・官網碼數 6,290 碼',center:[24.752248,121.197353],key:'kuanhsi-gps-v1',file:'course-kuanhsi.json',tee:'官網碼數',holes:KUANHSI_HOLES},
+  songbai:{id:'songbai',name:'南投松柏嶺高爾夫球場',short:'松柏嶺',sub:'南投名間・18 洞 Par 72・白梯 6,526 碼',center:[23.815364,120.661195],key:'songbai-gps-v1',file:'course-songbai.json',tee:'白梯',holes:SONGBAI_HOLES,note:'樹林夾道的山地球場，果嶺是炮台式（高出球道），短了球會滾下來。'}
 };
 const COMING=[{id:'nanfong',name:'南峰'},{id:'fengyuan',name:'豐原'}];
 
@@ -551,11 +574,13 @@ function frame(){
   const pts=[h.tee,h.front,h.center,h.back,state.pins[state.cur]].filter(Boolean).map(ll);
   const useMe=onThisHole();
   if(useMe)pts.push(me);
+  // 設定點位時：維持你轉好的方向；這洞還沒標兩個點以上就連畫面也不動
+  if(setting&&pts.length<2)return;
   if(!pts.length){map.setBearing(0);map.setView(COURSE_CENTER,16);return;}
   // 方向：在洞上就用「我→果嶺」（狗腿洞也朝前），否則「發球台→果嶺」
   const from=useMe?me:tee;
-  const brg=(from&&tgt&&from.distanceTo(tgt)>15)?bearingOf(from,tgt):0;
-  map.setBearing(-brg);
+  const brg=setting?((-map.getBearing())%360+360)%360:(from&&tgt&&from.distanceTo(tgt)>15)?bearingOf(from,tgt):0;
+  if(!setting)map.setBearing(-brg);
   if(pts.length===1){map.setView(pts[0],18,{animate:false});return;}
   // 轉到「前方=上」的座標系算範圍
   const lat0=pts[0].lat,lng0=pts[0].lng,kx=111320*Math.cos(lat0*Math.PI/180),ky=110540;
@@ -667,7 +692,8 @@ function renderHole(el,mode){
     <div class="lab">${p.live?'原本的打法（'+C.tee+'）':'打法（'+C.tee+'）'}・點球桿可以換，後面會重算${mineT?' <button class="reset" data-a="resetT">回到建議</button>':''}</div>
     <ol class="shots">${shotList(tee,h,'tee')}</ol>
     ${h.hy||h.drv?`<p class="txt ${long?'ok':''}"><span class="lab">長桿</span>${h.drv||h.hy} ${long?'這洞用長桿可以少一桿。':'但換長桿也不會少桿，維持原本打法比較穩。'}</p>`:''}
-    <p class="txt"><span class="lab">官方</span>${h.tip}</p>
+    ${h.tip?`<p class="txt"><span class="lab">說明</span>${h.tip}</p>`:''}
+    ${C.note?`<p class="txt"><span class="lab">全場</span>${C.note}</p>`:''}
     <p class="txt"><span class="lab">打法</span>${h.plan}</p>
     <div class="lab" style="margin-top:10px">我的注意事項</div>
     <textarea class="noteTa" placeholder="例如：開球瞄右邊那棵樹">${esc(state.notes[h.n]||'')}</textarea>
