@@ -120,6 +120,11 @@ body.offline .top::after{content:'離線';position:absolute;left:50%;transform:t
 .compass b{position:absolute;top:1px;left:0;right:0;text-align:center;font-size:9px;color:var(--mute);pointer-events:none}
 .compass.off{border-color:var(--acc)}
 body[data-view=home] .compass,body[data-view=guide] .compass{display:none}
+.fname{border:1.5px solid var(--acc);border-radius:12px;padding:10px 12px;margin:0 0 10px;display:flex;flex-direction:column;gap:4px;background:#e8c54714}
+.fname b{font-family:ui-monospace,Menlo,monospace;font-size:20px;color:var(--acc);word-break:break-all}
+.fname small{color:var(--mute);font-size:12.5px;line-height:1.5}
+.fname.warn{border-color:#ff8a6b;background:#ff8a6b14}.fname.warn b{font-family:inherit;font-size:15px;color:#ff8a6b}
+.btn.mini{width:auto;align-self:flex-start;margin:2px 0;padding:6px 12px;font-size:13px;text-align:center}
 .leaflet-control-attribution{font-size:9px!important;background:#0006!important;color:#ccc!important}
 .leaflet-control-attribution a{color:#ddd!important}
 </style>
@@ -211,7 +216,7 @@ body[data-view=home] .compass,body[data-view=guide] .compass{display:none}
   <button class="btn" id="mClubs">🏌 球桿距離表</button>
   <button class="btn" id="mSync">☁ 同步（電腦／手機／平板）<small id="syncState">未設定</small></button>
   <button class="btn" id="mShare">🔗 產生分享用球場檔<small id="shareHint">只含 18 洞點位，存成 GitHub 上的 course.json</small></button>
-  <button class="btn" id="mExport">⇩ 匯出球場資料<small>複製 JSON，可存到 GitHub 或換手機用</small></button>
+  <button class="btn" id="mExport">⇩ 匯出球場資料<small>自己備份用・不要上傳到 GitHub</small></button>
   <button class="btn" id="mImport">⇧ 匯入球場資料</button>
   <button class="btn pri" id="mClose">關閉</button>
 </div></div>
@@ -231,6 +236,7 @@ body[data-view=home] .compass,body[data-view=guide] .compass{display:none}
 
 <div class="sheet" id="io"><div class="in">
   <h3 id="ioTitle">匯出</h3>
+  <div id="ioHint"></div>
   <textarea id="ioText"></textarea>
   <button class="btn" id="ioCopy">複製</button>
   <button class="btn pri" id="ioOk">完成</button>
@@ -745,7 +751,7 @@ function switchCourse(id){
 }
 function courseTexts(){
   $('menuTitle').textContent=C.short+'攻略測距';
-  const sh=$('shareHint');if(sh)sh.textContent='只含 18 洞點位，存成 GitHub 上的 '+C.file;
+  const sh=$('shareHint');if(sh)sh.textContent='給別人用・上傳 GitHub 檔名：'+C.file;
   document.title=C.short+'・攻略測距';
 }
 function showView(v){
@@ -779,9 +785,10 @@ $('gvHome').onclick=()=>showView('home');
 $('gvMap').onclick=enterMap;
 $('mToGuide').onclick=enterGuide;
 
-$('mExport').onclick=()=>{$('ioTitle').textContent='匯出'+C.short+'資料';$('ioText').value=JSON.stringify({course:CID,holes:state.holes,bag:state.bag,notes:state.notes,ov:state.ov,pt:state.pt});$('ioCopy').style.display='block';$('ioOk').textContent='完成';$('ioOk').onclick=closeAll;open('io');};
+function ioHint(html){$('ioHint').innerHTML=html||'';const b=$('ioHint').querySelector('[data-copyname]');if(b)b.onclick=()=>navigator.clipboard.writeText(b.dataset.copyname).then(()=>toast('已複製檔名'),()=>toast('請手動輸入檔名'));}
+$('mExport').onclick=()=>{ioHint(`<div class="fname warn"><b>⚠ 這是你自己的備份，不要上傳到 GitHub</b><small>裡面有你的筆記和球桿距離。要分享點位給別人，請用「🔗 產生分享用球場檔」。</small></div>`);$('ioTitle').textContent='匯出'+C.short+'資料';$('ioText').value=JSON.stringify({course:CID,holes:state.holes,bag:state.bag,notes:state.notes,ov:state.ov,pt:state.pt});$('ioCopy').style.display='block';$('ioOk').textContent='完成';$('ioOk').onclick=closeAll;open('io');};
 $('ioCopy').onclick=()=>{navigator.clipboard.writeText($('ioText').value).then(()=>toast('已複製'),()=>{$('ioText').select();toast('請長按全選複製');});};
-$('mImport').onclick=()=>{$('ioTitle').textContent='貼上球場資料 JSON';$('ioText').value='';$('ioCopy').style.display='none';$('ioOk').textContent='匯入';
+$('mImport').onclick=()=>{ioHint('');$('ioTitle').textContent='貼上球場資料 JSON';$('ioText').value='';$('ioCopy').style.display='none';$('ioOk').textContent='匯入';
   $('ioOk').onclick=()=>{try{const d=JSON.parse($('ioText').value);if(!d.holes)throw 0;if(d.course&&COURSE_DATA[d.course]&&d.course!==CID&&!confirm('這是'+COURSE_DATA[d.course].short+'的資料，要匯入到目前的'+C.short+'嗎？'))return;state.holes=d.holes;if(d.bag)state.bag=d.bag;if(d.notes)state.notes=d.notes;if(d.ov)state.ov=d.ov;if(d.pt)state.pt=d.pt;save();closeAll();update();frame();toast('匯入完成');}catch(e){toast('格式不對');}};open('io');};
 
 // 長按螢幕 = 設旗位（快捷）
@@ -950,7 +957,8 @@ function shareCourseJson(){
 }
 $('mShare').onclick=()=>{
   const j=shareCourseJson();const cnt=Object.keys(JSON.parse(j).holes).length;
-  $('ioTitle').textContent=C.short+' 分享用球場檔（已標 '+cnt+' / 18 洞）・存成 '+C.file;
+  $('ioTitle').textContent=C.short+' 分享用球場檔（已標 '+cnt+' / 18 洞）';
+  ioHint(`<div class="fname"><small>上傳到 GitHub 時，檔名一定要叫</small><b>${C.file}</b><button class="btn mini" data-copyname="${C.file}">複製檔名</button><small>放在 repo 最外層（跟 index.html 同一層）。檔名打錯，app 就讀不到。</small><small>三個球場的檔名：${Object.values(COURSE_DATA).map(c=>c.short+' → '+c.file).join('、')}</small></div>`);
   $('ioText').value=j;$('ioCopy').style.display='block';$('ioOk').textContent='完成';$('ioOk').onclick=closeAll;open('io');
 };
 loadBuiltinCourse();
